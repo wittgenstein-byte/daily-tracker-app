@@ -1,0 +1,306 @@
+import { state, getLocalDateString } from './state.js';
+import { renderCalorieChart } from './chart.js';
+
+// SECURE ESCAPE HTML TO PREVENT XSS
+export function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/[&<>"']/g, (m) => {
+    switch (m) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#039;';
+      default: return m;
+    }
+  });
+}
+
+// DATE FORMATTING
+export function formatDateFriendly(dateStr) {
+  const todayStr = getLocalDateString();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = getLocalDateString(yesterday);
+
+  if (dateStr === todayStr) return 'Today';
+  if (dateStr === yesterdayStr) return 'Yesterday';
+
+  const parts = dateStr.split('-');
+  const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+  
+  return dateObj.toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+}
+
+// TOAST NOTIFICATIONS
+export function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  
+  let iconSvg = '';
+  if (type === 'success') {
+    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.5" style="width:18px;height:18px;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+  } else if (type === 'warning') {
+    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2.5" style="width:18px;height:18px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path></svg>`;
+  } else if (type === 'info') {
+    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" stroke-width="2.5" style="width:18px;height:18px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+  }
+
+  toast.innerHTML = `
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      ${iconSvg}
+      <span>${message}</span>
+    </div>
+  `;
+  container.appendChild(toast);
+
+  // Auto-remove toast
+  setTimeout(() => {
+    toast.classList.add('toast-out');
+    setTimeout(() => {
+      toast.remove();
+    }, 200);
+  }, 2000);
+}
+
+// MODAL WINDOW WRAPPER FUNCTIONS
+export function openModal(modalEl) {
+  modalEl.classList.remove('hidden');
+  modalEl.setAttribute('aria-hidden', 'false');
+}
+
+export function closeModal(modalEl) {
+  modalEl.classList.add('hidden');
+  modalEl.setAttribute('aria-hidden', 'true');
+}
+
+// DOM RENDERING
+export function renderTdeeInputs() {
+  document.getElementById('manual-goal-input').value = state.tdeeGoal;
+  document.getElementById('goal-display').textContent = state.tdeeGoal.toLocaleString();
+
+  const toggleManualBtn = document.getElementById('toggle-manual-btn');
+  const toggleCalcBtn = document.getElementById('toggle-calc-btn');
+  const manualFormWrapper = document.getElementById('manual-goal-form-wrapper');
+  const calcFormWrapper = document.getElementById('tdee-calc-form-wrapper');
+
+  if (!toggleManualBtn || !toggleCalcBtn || !manualFormWrapper || !calcFormWrapper) return;
+
+  if (state.tdeeSettings.calculationType === 'calculated') {
+    toggleCalcBtn.classList.add('active');
+    toggleManualBtn.classList.remove('active');
+    calcFormWrapper.classList.remove('hidden');
+    manualFormWrapper.classList.add('hidden');
+    populateTdeeCalculatorForm();
+  } else {
+    toggleManualBtn.classList.add('active');
+    toggleCalcBtn.classList.remove('active');
+    manualFormWrapper.classList.remove('hidden');
+    calcFormWrapper.classList.add('hidden');
+  }
+}
+
+export function populateTdeeCalculatorForm() {
+  const settings = state.tdeeSettings;
+  if (settings.gender === 'female') {
+    document.getElementById('gender-female').checked = true;
+  } else {
+    document.getElementById('gender-male').checked = true;
+  }
+
+  if (settings.age) document.getElementById('calc-age').value = settings.age;
+  if (settings.weight) document.getElementById('calc-weight').value = settings.weight;
+  if (settings.height) document.getElementById('calc-height').value = settings.height;
+  if (settings.activityLevel) document.getElementById('calc-activity').value = settings.activityLevel;
+  if (settings.objective) document.getElementById('calc-objective').value = settings.objective;
+}
+
+export function renderDailyLog() {
+  const dailyEntries = state.entries.filter(e => e.date === state.currentDate);
+  const listEl = document.getElementById('meal-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  if (dailyEntries.length === 0) {
+    listEl.innerHTML = `<li class="empty-section-placeholder">No foods logged</li>`;
+  } else {
+    dailyEntries.forEach(item => {
+      // Check if item is already in favorites
+      const isFav = state.favorites.some(f => 
+        f.name.toLowerCase() === item.name.toLowerCase() && 
+        parseInt(f.calories, 10) === parseInt(item.calories, 10)
+      );
+
+      const li = document.createElement('li');
+      li.className = 'meal-item';
+      li.innerHTML = `
+        <div class="item-info">
+          <span class="item-name">${escapeHtml(item.name)}</span>
+          <span class="item-time">${escapeHtml(item.time || 'Logged')}</span>
+        </div>
+        <div class="item-kcal-actions">
+          <span class="item-kcal-val">${parseInt(item.calories, 10).toLocaleString()} kcal</span>
+          <div class="actions-wrapper">
+            <button class="icon-btn action-btn btn-fav ${isFav ? 'active' : ''}" data-id="${item.id}" title="${isFav ? 'In Favorites' : 'Add to Favorites'}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            </button>
+            <button class="icon-btn action-btn btn-edit" data-id="${item.id}" title="Edit Entry">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            </button>
+            <button class="icon-btn action-btn btn-delete" data-id="${item.id}" title="Delete Entry">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+      `;
+      listEl.appendChild(li);
+    });
+  }
+}
+
+export function renderFavorites(searchQuery = '') {
+  const favList = document.getElementById('favorites-list');
+  if (!favList) return;
+  favList.innerHTML = '';
+
+  let filteredFavs = state.favorites;
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filteredFavs = state.favorites.filter(fav => 
+      fav.name.toLowerCase().includes(query)
+    );
+  }
+
+  if (filteredFavs.length === 0) {
+    favList.innerHTML = `<li class="empty-fav-placeholder">No favorites found</li>`;
+    return;
+  }
+
+  filteredFavs.forEach(fav => {
+    const li = document.createElement('li');
+    li.className = 'fav-item';
+    li.innerHTML = `
+      <div class="fav-info-wrapper">
+        <span class="fav-name" title="${escapeHtml(fav.name)}">${escapeHtml(fav.name)}</span>
+        <div class="fav-meta">
+          <span class="fav-kcal">${parseInt(fav.calories, 10).toLocaleString()} kcal</span>
+        </div>
+      </div>
+      <div class="fav-actions">
+        <button class="fav-add-btn" data-id="${fav.id}" title="Log this meal for current date">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button class="fav-del-btn" data-id="${fav.id}" title="Remove Favorite">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
+    `;
+    favList.appendChild(li);
+  });
+}
+
+export function updateSummaryMetrics() {
+  const dailyEntries = state.entries.filter(e => e.date === state.currentDate);
+  const totalConsumed = dailyEntries.reduce((sum, item) => sum + parseInt(item.calories, 10), 0);
+  
+  document.getElementById('consumed-display').textContent = totalConsumed.toLocaleString();
+  
+  const remaining = state.tdeeGoal - totalConsumed;
+  const remainingDisplay = document.getElementById('remaining-display');
+  
+  if (remainingDisplay) {
+    if (remaining < 0) {
+      remainingDisplay.textContent = Math.abs(remaining).toLocaleString();
+      remainingDisplay.className = 'metric-val text-warning';
+      document.querySelector('.metric-item:first-child .metric-label').textContent = 'Surplus';
+      
+      const exceededAmt = totalConsumed - state.tdeeGoal;
+      document.getElementById('exceeded-kcal-val').textContent = exceededAmt.toLocaleString();
+      document.getElementById('limit-warning').classList.remove('hidden');
+      document.querySelector('.progress-card').classList.add('exceeded-limit');
+    } else {
+      remainingDisplay.textContent = remaining.toLocaleString();
+      remainingDisplay.className = 'metric-val text-success';
+      document.querySelector('.metric-item:first-child .metric-label').textContent = 'Remaining';
+      
+      document.getElementById('limit-warning').classList.add('hidden');
+      document.querySelector('.progress-card').classList.remove('exceeded-limit');
+    }
+  }
+
+  const percentageDisplay = document.getElementById('percentage-display');
+  if (percentageDisplay) {
+    const percentage = state.tdeeGoal > 0 ? Math.round((totalConsumed / state.tdeeGoal) * 100) : 0;
+    percentageDisplay.textContent = `${percentage}%`;
+  }
+
+  const progressRing = document.getElementById('progress-ring-fill');
+  if (progressRing) {
+    const circumference = 565.48; // radius=90
+    const percentFactor = state.tdeeGoal > 0 ? Math.min(totalConsumed / state.tdeeGoal, 1.0) : 0;
+    const offset = circumference - (percentFactor * circumference);
+    progressRing.style.strokeDashoffset = offset;
+    
+    if (totalConsumed > state.tdeeGoal) {
+      progressRing.style.stroke = 'var(--color-warning)';
+    } else {
+      progressRing.style.stroke = 'var(--accent-primary)';
+    }
+  }
+}
+
+export function renderAnalyticsView() {
+  const dates = [];
+  const labels = [];
+  const rawDates = [];
+  const now = new Date();
+  
+  for (let i = state.analyticsRange - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const dateStr = getLocalDateString(d);
+    rawDates.push(dateStr);
+    
+    // label e.g. "Jun 5"
+    const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    labels.push(formatted);
+  }
+  
+  const values = rawDates.map(dateStr => {
+    return state.entries
+      .filter(e => e.date === dateStr)
+      .reduce((sum, item) => sum + parseInt(item.calories, 10), 0);
+  });
+  
+  // Stats
+  const activeDays = values.filter(v => v > 0);
+  const totalIntake = values.reduce((sum, v) => sum + v, 0);
+  
+  const avgKcal = activeDays.length > 0 ? Math.round(totalIntake / activeDays.length) : 0;
+  
+  const compliantDays = rawDates.filter(dateStr => {
+    const dayTotal = state.entries
+      .filter(e => e.date === dateStr)
+      .reduce((sum, item) => sum + parseInt(item.calories, 10), 0);
+    return dayTotal > 0 && dayTotal <= state.tdeeGoal;
+  }).length;
+  
+  const compliancePercent = activeDays.length > 0 ? Math.round((compliantDays / activeDays.length) * 100) : 0;
+  const maxKcal = activeDays.length > 0 ? Math.max(...activeDays) : 0;
+  const minKcal = activeDays.length > 0 ? Math.min(...activeDays) : 0;
+  
+  document.getElementById('stat-avg-kcal').textContent = avgKcal.toLocaleString();
+  document.getElementById('stat-compliance').textContent = `${compliancePercent}%`;
+  document.getElementById('stat-max-kcal').textContent = maxKcal.toLocaleString();
+  document.getElementById('stat-min-kcal').textContent = minKcal.toLocaleString();
+  
+  renderCalorieChart("#analytics-chart", labels, values, state.tdeeGoal, state.theme);
+}

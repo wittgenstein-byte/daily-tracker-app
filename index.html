@@ -60,7 +60,6 @@
       </div>
     </div>
   </header>
-
   <main class="app-main">
     <!-- Exceed Calorie Warning Banner -->
     <div id="limit-warning" class="limit-warning hidden">
@@ -77,94 +76,166 @@
       <button id="close-warning-btn" class="close-btn">&times;</button>
     </div>
 
-    <div class="dashboard-grid">
-      <!-- COLUMN 1: PROGRESS PANEL & FAVORITES -->
-      <section class="panel-left">
-        <!-- Progress Circular Widget -->
-        <div class="dashboard-card progress-card card-glow">
-          <h2 class="card-title">Daily Progress</h2>
-          <div class="progress-display">
-            <div class="circular-progress">
-              <svg class="progress-ring-svg" width="220" height="220">
-                <!-- Track circle -->
-                <circle class="progress-ring-bg" stroke="var(--border-muted)" stroke-width="14" fill="transparent" r="90" cx="110" cy="110"/>
-                <!-- Filled circle -->
-                <circle id="progress-ring-fill" class="progress-ring-fill" stroke="var(--accent-primary)" stroke-width="14" fill="transparent" r="90" cx="110" cy="110" stroke-linecap="round"/>
-              </svg>
-              <div class="progress-text-container">
-                <span id="consumed-display" class="consumed-val">0</span>
-                <span class="of-label">of</span>
-                <span id="goal-display" class="goal-val">2000</span>
-                <span class="unit-label">kcal</span>
-              </div>
-            </div>
-          </div>
+    <!-- View Switcher Tabs -->
+    <div class="view-tabs">
+      <button id="view-dashboard-btn" class="view-tab active">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+        <span>Dashboard</span>
+      </button>
+      <button id="view-analytics-btn" class="view-tab">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Analytics</span>
+      </button>
+    </div>
 
-          <div class="metrics-grid">
-            <div class="metric-item">
-              <span class="metric-label">Remaining</span>
-              <div class="metric-value-container">
-                <span id="remaining-display" class="metric-val text-success">2000</span>
-                <span class="metric-unit">kcal</span>
-              </div>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Percentage</span>
-              <div class="metric-value-container">
-                <span id="percentage-display" class="metric-val">0%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Favorites Panel -->
-        <div class="dashboard-card favorites-card">
-          <div class="favorites-header">
-            <h2 class="card-title">Favorite Meals</h2>
-            <button id="add-favorite-btn" class="icon-btn text-accent" aria-label="Add Favorite Meal" title="Add Favorite">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="heart-icon-plus"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-            </button>
-          </div>
-          <div class="favorites-search-bar">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="fav-search" placeholder="Search favorites...">
-          </div>
-          <ul id="favorites-list" class="favorites-list">
-            <!-- Dynamic Content -->
-          </ul>
-        </div>
-      </section>
-
-      <!-- COLUMN 2: DAILY MEAL LOG -->
-      <section class="panel-right">
-        <!-- Daily Log Card -->
-        <div class="dashboard-card meal-log-card">
-          <div class="meal-log-header">
-            <h2 class="card-title">Daily Meal Log</h2>
-            <button id="add-meal-floating-btn" class="text-btn primary-btn add-btn-with-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
-                <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Add Food</span>
-            </button>
-          </div>
-
-          <!-- Unified Meal Log Section -->
-          <div class="meal-sections-container">
-            <div class="meal-section">
-              <div class="meal-section-header">
-                <div class="section-title-wrapper">
-                  <span class="meal-type-badge type-dinner">Foods Logged</span>
-                  <span id="meal-kcal-sum" class="section-total">0 kcal</span>
+    <!-- View Pane 1: Dashboard -->
+    <div id="dashboard-view" class="view-pane">
+      <div class="dashboard-grid">
+        <!-- COLUMN 1: PROGRESS PANEL & FAVORITES -->
+        <section class="panel-left">
+          <!-- Progress Circular Widget -->
+          <div class="dashboard-card progress-card card-glow">
+            <h2 class="card-title">Daily Progress</h2>
+            <div class="progress-display">
+              <div class="circular-progress">
+                <svg class="progress-ring-svg" width="220" height="220">
+                  <!-- Track circle -->
+                  <circle class="progress-ring-bg" stroke="var(--border-muted)" stroke-width="14" fill="transparent" r="90" cx="110" cy="110"/>
+                  <!-- Filled circle -->
+                  <circle id="progress-ring-fill" class="progress-ring-fill" stroke="var(--accent-primary)" stroke-width="14" fill="transparent" r="90" cx="110" cy="110" stroke-linecap="round"/>
+                </svg>
+                <div class="progress-text-container">
+                  <span id="consumed-display" class="consumed-val">0</span>
+                  <span class="of-label">of</span>
+                  <span id="goal-display" class="goal-val">2000</span>
+                  <span class="unit-label">kcal</span>
                 </div>
               </div>
-              <ul id="meal-list" class="meal-item-list">
-                <!-- Dynamic Content -->
-              </ul>
+            </div>
+
+            <div class="metrics-grid">
+              <div class="metric-item">
+                <span class="metric-label">Remaining</span>
+                <div class="metric-value-container">
+                  <span id="remaining-display" class="metric-val text-success">2000</span>
+                  <span class="metric-unit">kcal</span>
+                </div>
+              </div>
+              <div class="metric-item">
+                <span class="metric-label">Percentage</span>
+                <div class="metric-value-container">
+                  <span id="percentage-display" class="metric-val">0%</span>
+                </div>
+              </div>
             </div>
           </div>
+
+          <!-- Favorites Panel -->
+          <div class="dashboard-card favorites-card">
+            <div class="favorites-header">
+              <h2 class="card-title">Favorite Meals</h2>
+              <button id="add-favorite-btn" class="icon-btn text-accent" aria-label="Add Favorite Meal" title="Add Favorite">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="heart-icon-plus"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+              </button>
+            </div>
+            <div class="favorites-search-bar">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="fav-search" placeholder="Search favorites...">
+            </div>
+            <ul id="favorites-list" class="favorites-list">
+              <!-- Dynamic Content -->
+            </ul>
+          </div>
+        </section>
+
+        <!-- COLUMN 2: DAILY MEAL LOG -->
+        <section class="panel-right">
+          <!-- Daily Log Card -->
+          <div class="dashboard-card meal-log-card">
+            <div class="meal-log-header">
+              <h2 class="card-title">Daily Meal Log</h2>
+              <button id="add-meal-floating-btn" class="text-btn primary-btn add-btn-with-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
+                  <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Add Food</span>
+              </button>
+            </div>
+
+            <!-- Unified Meal Log Section -->
+            <div class="meal-sections-container">
+              <div class="meal-section">
+                <div class="meal-section-header">
+                  <div class="section-title-wrapper">
+                    <span class="meal-type-badge type-dinner">Foods Logged</span>
+                    <span id="meal-kcal-sum" class="section-total">0 kcal</span>
+                  </div>
+                </div>
+                <ul id="meal-list" class="meal-item-list">
+                  <!-- Dynamic Content -->
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- View Pane 2: Analytics -->
+    <div id="analytics-view" class="view-pane hidden">
+      <div class="analytics-layout">
+        <!-- Chart Section -->
+        <div class="dashboard-card chart-card card-glow">
+          <div class="chart-header">
+            <h2 class="card-title">Calorie Intake Trends</h2>
+            <div class="range-toggle-group">
+              <button id="range-7d-btn" class="toggle-tab active">Last 7 Days</button>
+              <button id="range-30d-btn" class="toggle-tab">Last 30 Days</button>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <div id="analytics-chart"></div>
+          </div>
         </div>
-      </section>
+
+        <!-- Key Metrics Cards -->
+        <div class="analytics-metrics-grid">
+          <div class="dashboard-card metric-card">
+            <span class="metric-label">Daily Average</span>
+            <div class="metric-val-wrapper">
+              <span id="stat-avg-kcal" class="metric-val">0</span>
+              <span class="metric-unit">kcal</span>
+            </div>
+            <p class="metric-desc">Average intake over the selected range.</p>
+          </div>
+
+          <div class="dashboard-card metric-card">
+            <span class="metric-label">Target Compliance</span>
+            <div class="metric-val-wrapper">
+              <span id="stat-compliance" class="metric-val">0%</span>
+            </div>
+            <p class="metric-desc">Days you stayed under your budget target.</p>
+          </div>
+
+          <div class="dashboard-card metric-card">
+            <span class="metric-label">Highest Intake</span>
+            <div class="metric-val-wrapper">
+              <span id="stat-max-kcal" class="metric-val text-warning">0</span>
+              <span class="metric-unit">kcal</span>
+            </div>
+            <p class="metric-desc">Maximum calories logged in a single day.</p>
+          </div>
+
+          <div class="dashboard-card metric-card">
+            <span class="metric-label">Lowest Intake</span>
+            <div class="metric-val-wrapper">
+              <span id="stat-min-kcal" class="metric-val text-success">0</span>
+              <span class="metric-unit">kcal</span>
+            </div>
+            <p class="metric-desc">Minimum calories logged in a single day.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -305,6 +376,25 @@
                 <button type="submit" class="text-btn primary-btn w-full">Calculate & Save Goal</button>
               </div>
             </form>
+          </div>
+        </div>
+        <!-- Data Backup & Restore -->
+        <div class="settings-section-divider"></div>
+        <div class="settings-backup-section">
+          <h4 class="settings-section-title">Data Backup & Restore</h4>
+          <p class="input-help">Export your calorie entries and favorites to a JSON backup file, or restore them from a previous backup.</p>
+          <div class="backup-actions">
+            <button id="export-btn" class="text-btn secondary-btn w-full">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              <span>Export Backup (JSON)</span>
+            </button>
+            <div class="import-wrapper w-full">
+              <input type="file" id="import-file-input" accept=".json" class="hidden">
+              <button id="import-btn" class="text-btn secondary-btn w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Import Backup (JSON)</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

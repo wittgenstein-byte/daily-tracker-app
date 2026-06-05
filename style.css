@@ -1234,3 +1234,177 @@ input:focus, select:focus {
 .settings-btn:hover .settings-icon {
   transform: rotate(45deg);
 }
+
+/* VIEW SWITCHER TABS */
+.view-tabs {
+  display: flex;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 0.3rem;
+  margin-bottom: 1.5rem;
+  max-width: 320px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.view-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.view-tab:hover {
+  color: var(--text-primary);
+  background-color: var(--border-muted);
+}
+
+.view-tab.active {
+  background-color: var(--accent-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.view-tab.active .tab-icon {
+  stroke: #ffffff;
+}
+
+.tab-icon {
+  width: 15px;
+  height: 15px;
+  stroke: var(--text-secondary);
+  transition: stroke 0.2s ease;
+}
+
+/* VIEW PANE HIDDEN UTILITY */
+.view-pane.hidden {
+  display: none !important;
+}
+
+/* ANALYTICS LAYOUT */
+.analytics-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.chart-card {
+  padding: 1.5rem;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.range-toggle-group {
+  display: flex;
+  background-color: var(--bg-tertiary);
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-muted);
+}
+
+.chart-wrapper {
+  min-height: 320px;
+}
+
+/* ANALYTICS METRICS GRID */
+.analytics-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+  .analytics-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .analytics-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metric-card .metric-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric-val-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin: 0.35rem 0;
+}
+
+.metric-card .metric-val {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.metric-card .metric-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* BACKUP & RESTORE SECTION IN SETTINGS */
+.settings-section-divider {
+  height: 1px;
+  background-color: var(--border-muted);
+  margin: 1.75rem 0;
+}
+
+.settings-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.backup-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 480px) {
+  .backup-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+.import-wrapper {
+  position: relative;
+}
