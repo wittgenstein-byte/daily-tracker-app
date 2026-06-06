@@ -540,7 +540,10 @@ async function analyzeFood(base64DataUrl) {
     messages: [
       {
         role: 'system',
-        content: 'You are an expert nutritionist and fitness trainer. Analyze food images accurately.'
+        content: `You are a nutritionist. When given a food image, respond with ONLY a JSON object. No math, no explanation, no text outside the JSON.
+
+Example response:
+{"menu": "Grilled Chicken Rice", "protein_g": 35, "fat_g": 12, "carb_g": 55, "kcal": 470}`
       },
       {
         role: 'user',
@@ -551,13 +554,13 @@ async function analyzeFood(base64DataUrl) {
           },
           {
             type: 'text',
-            text: 'Analyze the food shown in this image. Respond ONLY with a JSON object in this exact format, no explanation or extra text:\n{\n  "menu": "<food name in English>",\n  "protein_g": <number>,\n  "fat_g": <number>,\n  "carb_g": <number>,\n  "kcal": <number>\n}'
+            text: 'What food is this? Reply ONLY with JSON: {"menu": "name", "protein_g": number, "fat_g": number, "carb_g": number, "kcal": number}'
           }
         ]
       }
     ],
-    max_tokens: 512,
-    temperature: 0.2
+    max_tokens: 256,
+    temperature: 0.1
   };
 
   const response = await fetch(apiUrl, {
@@ -582,38 +585,20 @@ async function analyzeFood(base64DataUrl) {
   console.log('[AI Scan] Raw content:', rawContent);
 
   // Try multiple strategies to extract JSON from the response
-  let parsed = null;
+  let parsed = tryParseJSON(rawContent);
 
-  // Strategy 1: Strip markdown code fences (```json ... ``` or ``` ... ```)
-  const fenceMatch = rawContent.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
-  if (fenceMatch) {
+  // Strategy 4: If all JSON parsing failed, send a repair call asking the LLM to reformat
+  if (!parsed && rawContent.trim().length > 0) {
+    console.log('[AI Scan] JSON parse failed, attempting repair call...');
     try {
-      parsed = JSON.parse(fenceMatch[1].trim());
-      console.log('[AI Scan] Parsed via markdown fence strategy');
-    } catch (e) { /* try next */ }
-  }
-
-  // Strategy 2: Find first { ... } block (greedy)
-  if (!parsed) {
-    const braceMatch = rawContent.match(/\{[\s\S]*\}/);
-    if (braceMatch) {
-      try {
-        parsed = JSON.parse(braceMatch[0]);
-        console.log('[AI Scan] Parsed via brace extraction strategy');
-      } catch (e) { /* try next */ }
+      parsed = await repairWithLLM(rawContent, model);
+    } catch (e) {
+      console.error('[AI Scan] Repair call also failed:', e);
     }
   }
 
-  // Strategy 3: The entire content might be valid JSON
   if (!parsed) {
-    try {
-      parsed = JSON.parse(rawContent.trim());
-      console.log('[AI Scan] Parsed entire content as JSON');
-    } catch (e) { /* give up */ }
-  }
-
-  if (!parsed) {
-    console.error('[AI Scan] Could not parse response. Raw:', rawContent);
+    console.error('[AI Scan] All parsing strategies failed. Raw:', rawContent);
     throw new Error(`Could not parse AI response. Raw: "${rawContent.slice(0, 200)}"`);
   }
 
@@ -624,6 +609,83 @@ async function analyzeFood(base64DataUrl) {
     carb: Math.round(parsed.carb_g ?? 0),
     kcal: Math.round(parsed.kcal ?? 0)
   };
+}
+
+/**
+ * Try 3 strategies to parse JSON from a raw LLM response string.
+ */
+function tryParseJSON(rawContent) {
+  // Strategy 1: Strip markdown code fences
+  const fenceMatch = rawContent.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fenceMatch) {
+    try {
+      const result = JSON.parse(fenceMatch[1].trim());
+      console.log('[AI Scan] Parsed via markdown fence strategy');
+      return result;
+    } catch (e) { /* try next */ }
+  }
+
+  // Strategy 2: Find first { ... } block
+  const braceMatch = rawContent.match(/\{[\s\S]*\}/);
+  if (braceMatch) {
+    try {
+      const result = JSON.parse(braceMatch[0]);
+      console.log('[AI Scan] Parsed via brace extraction strategy');
+      return result;
+    } catch (e) { /* try next */ }
+  }
+
+  // Strategy 3: Entire content as JSON
+  try {
+    const result = JSON.parse(rawContent.trim());
+    console.log('[AI Scan] Parsed entire content as JSON');
+    return result;
+  } catch (e) { /* give up */ }
+
+  return null;
+}
+
+/**
+ * Send a text-only repair call: feed the raw response back and ask for proper JSON.
+ */
+async function repairWithLLM(rawText, model) {
+  const apiUrl = 'https://gen.ai.kku.ac.th/api/v1/chat/completions';
+
+  const repairPayload = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: 'Convert the user\'s food analysis into a JSON object. Output ONLY valid JSON, nothing else.'
+      },
+      {
+        role: 'user',
+        content: `The following is a food analysis result. Convert it to this exact JSON format:
+{"menu": "food name", "protein_g": number, "fat_g": number, "carb_g": number, "kcal": number}
+
+Analysis: ${rawText}`
+      }
+    ],
+    max_tokens: 256,
+    temperature: 0
+  };
+
+  const resp = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${state.apiKey}`
+    },
+    body: JSON.stringify(repairPayload)
+  });
+
+  if (!resp.ok) throw new Error('Repair call failed');
+
+  const repairData = await resp.json();
+  const repairContent = repairData?.choices?.[0]?.message?.content || '';
+  console.log('[AI Scan] Repair response:', repairContent);
+
+  return tryParseJSON(repairContent);
 }
 
 function prefillMealModalFromScan(result) {
