@@ -692,37 +692,270 @@ Example response:
 }
 
 /**
- * Try 3 strategies to parse JSON from a raw LLM response string.
+ * Sanitize a raw string so it's closer to valid JSON.
+ * Handles: BOM, smart quotes, control chars, single quotes, trailing commas,
+ * unquoted keys, JS-style comments, number-as-string values.
  */
-function tryParseJSON(rawContent) {
-  // Strategy 1: Strip markdown code fences
-  const fenceMatch = rawContent.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
-  if (fenceMatch) {
-    try {
-      const result = JSON.parse(fenceMatch[1].trim());
-      console.log('[AI Scan] Parsed via markdown fence strategy');
-      return result;
-    } catch (e) { /* try next */ }
+function sanitizeJSONString(str) {
+  let s = str;
+
+  // Strip BOM
+  s = s.replace(/^\uFEFF/, '');
+
+  // Replace smart/curly quotes with normal ones
+  s = s.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
+  s = s.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'");
+
+  // Remove JS-style line comments (// ...)
+  s = s.replace(/\/\/[^\n]*/g, '');
+
+  // Remove JS-style block comments (/* ... */)
+  s = s.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Strip control characters except \n \r \t
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+  // Replace single-quoted values with double-quoted (simple heuristic)
+  // Match key-value patterns: 'value' → "value"
+  s = s.replace(/:\s*'([^']*)'/g, ': "$1"');
+  // Match single-quoted keys: 'key': → "key":
+  s = s.replace(/'([^']+)'\s*:/g, '"$1":');
+
+  // Unquoted keys: { menu: → { "menu":
+  s = s.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+
+  // Remove trailing commas before } or ]
+  s = s.replace(/,\s*([}\]])/g, '$1');
+
+  return s;
+}
+
+/**
+ * Try to parse a JSON string, with sanitization fallback.
+ */
+function tryParseSingle(str) {
+  const trimmed = str.trim();
+  if (!trimmed) return null;
+
+  // Direct parse
+  try { return JSON.parse(trimmed); } catch (e) { /* continue */ }
+
+  // Sanitized parse
+  try { return JSON.parse(sanitizeJSONString(trimmed)); } catch (e) { /* continue */ }
+
+  return null;
+}
+
+/**
+ * Try to repair truncated/incomplete JSON by closing open braces/brackets.
+ */
+function tryRepairTruncated(str) {
+  let s = sanitizeJSONString(str.trim());
+
+  // Count unmatched braces/brackets
+  let braces = 0, brackets = 0;
+  let inString = false, escape = false;
+  for (const ch of s) {
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') braces++;
+    if (ch === '}') braces--;
+    if (ch === '[') brackets++;
+    if (ch === ']') brackets--;
   }
 
-  // Strategy 2: Find first { ... } block
-  const braceMatch = rawContent.match(/\{[\s\S]*\}/);
-  if (braceMatch) {
-    try {
-      const result = JSON.parse(braceMatch[0]);
+  // If we're still inside a string, close it
+  if (inString) s += '"';
+
+  // Remove any trailing comma before we close
+  s = s.replace(/,\s*$/, '');
+
+  // Close open brackets/braces
+  while (brackets > 0) { s += ']'; brackets--; }
+  while (braces > 0) { s += '}'; braces--; }
+
+  try { return JSON.parse(s); } catch (e) { return null; }
+}
+
+/**
+ * Normalize parsed object field names to the expected shape:
+ * { menu, protein_g, fat_g, carb_g, kcal }
+ */
+function normalizeFields(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+
+  // If it's an array, try the first element
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return null;
+    return normalizeFields(obj[0]);
+  }
+
+  // Build a lowercase-key lookup
+  const lc = {};
+  for (const [k, v] of Object.entries(obj)) {
+    lc[k.toLowerCase().replace(/[\s_-]+/g, '_')] = v;
+  }
+
+  const menu =
+    lc['menu'] ?? lc['name'] ?? lc['food_name'] ?? lc['food'] ??
+    lc['dish'] ?? lc['dish_name'] ?? lc['item'] ?? lc['food_item'] ?? 'Unknown food';
+
+  const kcal =
+    lc['kcal'] ?? lc['calories'] ?? lc['calorie'] ?? lc['cal'] ??
+    lc['total_calories'] ?? lc['total_kcal'] ?? lc['energy'] ??
+    lc['energy_kcal'] ?? 0;
+
+  const protein_g =
+    lc['protein_g'] ?? lc['protein'] ?? lc['proteins'] ??
+    lc['protein_grams'] ?? lc['prot'] ?? 0;
+
+  const fat_g =
+    lc['fat_g'] ?? lc['fat'] ?? lc['fats'] ??
+    lc['fat_grams'] ?? lc['total_fat'] ?? 0;
+
+  const carb_g =
+    lc['carb_g'] ?? lc['carb'] ?? lc['carbs'] ??
+    lc['carbohydrate'] ?? lc['carbohydrates'] ??
+    lc['carb_grams'] ?? lc['carbohydrate_g'] ?? lc['carbohydrates_g'] ?? 0;
+
+  // Coerce string numbers → actual numbers
+  const toNum = (v) => {
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const n = parseFloat(v.replace(/[^\d.\-]/g, ''));
+      return isNaN(n) ? 0 : n;
+    }
+    return 0;
+  };
+
+  return {
+    menu: String(menu),
+    protein_g: toNum(protein_g),
+    fat_g: toNum(fat_g),
+    carb_g: toNum(carb_g),
+    kcal: toNum(kcal)
+  };
+}
+
+/**
+ * Try multiple strategies to parse JSON from a raw LLM response string.
+ */
+function tryParseJSON(rawContent) {
+  if (!rawContent || typeof rawContent !== 'string') return null;
+
+  const content = rawContent.trim();
+  if (!content) return null;
+
+  // Strategy 1: Markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceRegex = /```(?:json|JSON|js|javascript)?\s*\n?([\s\S]*?)\n?\s*```/g;
+  let fenceMatch;
+  while ((fenceMatch = fenceRegex.exec(content)) !== null) {
+    const parsed = tryParseSingle(fenceMatch[1]);
+    if (parsed) {
+      console.log('[AI Scan] Parsed via markdown fence strategy');
+      return normalizeFields(parsed);
+    }
+  }
+
+  // Strategy 2: Find JSON object(s) via balanced brace extraction
+  const braceBlocks = extractBraceBlocks(content);
+  for (const block of braceBlocks) {
+    const parsed = tryParseSingle(block);
+    if (parsed) {
       console.log('[AI Scan] Parsed via brace extraction strategy');
-      return result;
-    } catch (e) { /* try next */ }
+      return normalizeFields(parsed);
+    }
   }
 
   // Strategy 3: Entire content as JSON
-  try {
-    const result = JSON.parse(rawContent.trim());
-    console.log('[AI Scan] Parsed entire content as JSON');
-    return result;
-  } catch (e) { /* give up */ }
+  {
+    const parsed = tryParseSingle(content);
+    if (parsed) {
+      console.log('[AI Scan] Parsed entire content as JSON');
+      return normalizeFields(parsed);
+    }
+  }
+
+  // Strategy 4: Try to repair truncated JSON from brace blocks
+  for (const block of braceBlocks) {
+    const parsed = tryRepairTruncated(block);
+    if (parsed) {
+      console.log('[AI Scan] Parsed via truncated JSON repair');
+      return normalizeFields(parsed);
+    }
+  }
+
+  // Strategy 5: Regex extraction as last resort — pull key-value pairs directly
+  {
+    const parsed = regexExtractFields(content);
+    if (parsed) {
+      console.log('[AI Scan] Parsed via regex field extraction');
+      return normalizeFields(parsed);
+    }
+  }
 
   return null;
+}
+
+/**
+ * Extract all top-level { ... } blocks from a string using balanced brace matching.
+ * Handles nested objects properly.
+ */
+function extractBraceBlocks(str) {
+  const blocks = [];
+  let depth = 0, start = -1;
+  let inString = false, escape = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        blocks.push(str.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+
+  // If we found an opening brace but no closing, capture the partial block too
+  if (start !== -1 && blocks.length === 0) {
+    blocks.push(str.slice(start));
+  }
+
+  return blocks;
+}
+
+/**
+ * Last-resort regex extraction: pull individual field values from the raw text
+ * even if the JSON structure is broken.
+ */
+function regexExtractFields(text) {
+  const menuMatch = text.match(/["']?(?:menu|name|food|dish)["']?\s*[:=]\s*["']([^"'\n]+)["']/i);
+  const kcalMatch = text.match(/["']?(?:kcal|calories?|cal|energy)["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)["']?/i);
+  const proteinMatch = text.match(/["']?(?:protein(?:_?g(?:rams)?)?|prot)["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)["']?/i);
+  const fatMatch = text.match(/["']?(?:fat(?:_?g(?:rams)?)?|fats?)["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)["']?/i);
+  const carbMatch = text.match(/["']?(?:carb(?:ohydrate)?s?(?:_?g(?:rams)?)?|carb_g)["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)["']?/i);
+
+  // Need at least kcal or menu to consider it a valid extraction
+  if (!kcalMatch && !menuMatch) return null;
+
+  return {
+    menu: menuMatch ? menuMatch[1].trim() : 'Unknown food',
+    kcal: kcalMatch ? parseFloat(kcalMatch[1]) : 0,
+    protein_g: proteinMatch ? parseFloat(proteinMatch[1]) : 0,
+    fat_g: fatMatch ? parseFloat(fatMatch[1]) : 0,
+    carb_g: carbMatch ? parseFloat(carbMatch[1]) : 0
+  };
 }
 
 /**
