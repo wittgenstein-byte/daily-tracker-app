@@ -139,12 +139,26 @@ export function renderDailyLog() {
         parseInt(f.calories, 10) === parseInt(item.calories, 10)
       );
 
+      // Build macro pills HTML for AI-scanned meals
+      let macroPillsHtml = '';
+      if (item.aiScanned && (item.protein != null || item.fat != null || item.carb != null)) {
+        macroPillsHtml = `
+          <div class="item-macro-pills">
+            <span class="macro-pill macro-pill--protein">P: <strong>${item.protein ?? '--'}g</strong></span>
+            <span class="macro-pill macro-pill--fat">F: <strong>${item.fat ?? '--'}g</strong></span>
+            <span class="macro-pill macro-pill--carb">C: <strong>${item.carb ?? '--'}g</strong></span>
+            <span class="macro-pill macro-pill--ai">\u2728 AI</span>
+          </div>
+        `;
+      }
+
       const li = document.createElement('li');
       li.className = 'meal-item';
       li.innerHTML = `
         <div class="item-info">
           <span class="item-name">${escapeHtml(item.name)}</span>
           <span class="item-time">${escapeHtml(item.time || 'Logged')}</span>
+          ${macroPillsHtml}
         </div>
         <div class="item-kcal-actions">
           <span class="item-kcal-val">${parseInt(item.calories, 10).toLocaleString()} kcal</span>

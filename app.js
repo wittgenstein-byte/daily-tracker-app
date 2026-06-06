@@ -5,6 +5,7 @@ import {
   saveFavorites, 
   saveTdeeGoal, 
   saveTdeeSettings, 
+  saveAiSettings,
   getLocalDateString 
 } from './src/state.js';
 
@@ -169,6 +170,7 @@ function setupEventListeners() {
     settingsBtn.addEventListener('click', () => {
       openModal(settingsModal);
       renderTdeeInputs();
+      loadAiSettingsIntoForm();
     });
   }
   if (closeSettingsModal) closeSettingsModal.addEventListener('click', () => closeModal(settingsModal));
@@ -311,6 +313,7 @@ function setupEventListeners() {
       closeModal(mealModal);
       closeModal(favModal);
       closeModal(settingsModal);
+      closeCameraModal();
     }
   });
 
@@ -353,6 +356,264 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Camera / AI Scan FAB
+  const scanFab = document.getElementById('scan-fab');
+  if (scanFab) scanFab.addEventListener('click', () => openCameraModal());
+
+  // Camera modal controls
+  const closeCameraBtn = document.getElementById('close-camera-modal');
+  const captureBtn = document.getElementById('capture-btn');
+  const retakeBtn = document.getElementById('retake-btn');
+  const scanConfirmBtn = document.getElementById('scan-confirm-btn');
+  const cameraModal = document.getElementById('camera-modal');
+
+  if (closeCameraBtn) closeCameraBtn.addEventListener('click', () => closeCameraModal());
+  if (captureBtn) captureBtn.addEventListener('click', () => captureFrame());
+  if (retakeBtn) retakeBtn.addEventListener('click', () => retakePhoto());
+  if (scanConfirmBtn) scanConfirmBtn.addEventListener('click', () => confirmAndScan());
+  if (cameraModal) {
+    cameraModal.addEventListener('click', (e) => {
+      if (e.target === cameraModal) closeCameraModal();
+    });
+  }
+
+  // Save AI Settings button
+  const saveAiBtn = document.getElementById('save-ai-settings-btn');
+  if (saveAiBtn) {
+    saveAiBtn.addEventListener('click', () => {
+      const keyVal = document.getElementById('settings-api-key').value.trim();
+      const modelVal = document.getElementById('settings-model-name').value.trim();
+      state.apiKey = keyVal;
+      state.modelName = modelVal || 'gemini-3.5-flash';
+      saveAiSettings();
+      showToast('AI settings saved!', 'success');
+    });
+  }
+}
+
+// AI SETTINGS HELPERS
+function loadAiSettingsIntoForm() {
+  const keyInput = document.getElementById('settings-api-key');
+  const modelInput = document.getElementById('settings-model-name');
+  if (keyInput) keyInput.value = state.apiKey || '';
+  if (modelInput) modelInput.value = state.modelName || 'gemini-3.5-flash';
+}
+
+// ============================================================
+// CAMERA MODULE
+// ============================================================
+let _cameraStream = null;
+let _capturedBase64 = null;
+
+function slugify(str) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+async function openCameraModal() {
+  const modal = document.getElementById('camera-modal');
+  const video = document.getElementById('camera-video');
+  if (!modal || !video) return;
+
+  // Show step 1, hide others
+  showCameraStep('preview');
+  _capturedBase64 = null;
+  closeModal(modal);
+  modal.classList.remove('hidden');
+
+  try {
+    _cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    video.srcObject = _cameraStream;
+  } catch (err) {
+    showToast('Camera access denied or unavailable.', 'warning');
+    closeModal(modal);
+    stopCameraStream();
+  }
+}
+
+function closeCameraModal() {
+  const modal = document.getElementById('camera-modal');
+  if (modal) closeModal(modal);
+  stopCameraStream();
+  _capturedBase64 = null;
+}
+
+function stopCameraStream() {
+  if (_cameraStream) {
+    _cameraStream.getTracks().forEach(t => t.stop());
+    _cameraStream = null;
+  }
+  const video = document.getElementById('camera-video');
+  if (video) video.srcObject = null;
+}
+
+function showCameraStep(step) {
+  // step: 'preview' | 'confirm' | 'loading'
+  ['preview', 'confirm', 'loading'].forEach(s => {
+    const el = document.getElementById(`camera-step-${s}`);
+    if (el) el.classList.toggle('hidden', s !== step);
+  });
+}
+
+function captureFrame() {
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  if (!video || !canvas) return;
+
+  // Compress: cap at 800x600, JPEG 80%
+  const MAX_W = 800;
+  const MAX_H = 600;
+  let w = video.videoWidth || 640;
+  let h = video.videoHeight || 480;
+  const ratio = Math.min(MAX_W / w, MAX_H / h, 1);
+  canvas.width = Math.round(w * ratio);
+  canvas.height = Math.round(h * ratio);
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  _capturedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+  showCameraStep('confirm');
+  stopCameraStream();
+}
+
+function retakePhoto() {
+  _capturedBase64 = null;
+  showCameraStep('preview');
+
+  const video = document.getElementById('camera-video');
+  if (video) {
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    }).then(stream => {
+      _cameraStream = stream;
+      video.srcObject = stream;
+    }).catch(() => showToast('Camera restart failed.', 'warning'));
+  }
+}
+
+async function confirmAndScan() {
+  if (!_capturedBase64) return;
+
+  if (!state.apiKey) {
+    showToast('No API key set. Go to Settings → AI Food Scanner.', 'warning');
+    return;
+  }
+
+  showCameraStep('loading');
+
+  try {
+    const result = await analyzeFood(_capturedBase64);
+
+    // Save image to localStorage keyed by menu + today's date
+    const slug = slugify(result.menu || 'food');
+    const dateKey = state.currentDate;
+    try {
+      localStorage.setItem(`scan_${slug}_${dateKey}`, _capturedBase64);
+    } catch (storageErr) {
+      console.warn('Could not save image to localStorage (quota?):', storageErr);
+    }
+
+    // Close camera modal, open meal modal pre-filled
+    closeCameraModal();
+    prefillMealModalFromScan(result);
+
+  } catch (err) {
+    showToast(`AI scan failed: ${err.message}`, 'warning');
+    showCameraStep('confirm'); // Go back to confirm so user can retry
+  }
+}
+
+async function analyzeFood(base64DataUrl) {
+  const apiUrl = 'https://gen.ai.kku.ac.th/api/v1/chat/completions';
+  const model = state.modelName || 'gemini-3.5-flash';
+
+  // Strip the data URL prefix for the API
+  const base64Image = base64DataUrl.replace(/^data:image\/\w+;base64,/, '');
+
+  const payload = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are an expert nutritionist and fitness trainer. Analyze food images accurately.'
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: `data:image/jpeg;base64,${base64Image}` }
+          },
+          {
+            type: 'text',
+            text: 'Analyze the food shown in this image. Respond ONLY with a JSON object in this exact format, no explanation or extra text:\n{\n  "menu": "<food name in English>",\n  "protein_g": <number>,\n  "fat_g": <number>,\n  "carb_g": <number>,\n  "kcal": <number>\n}'
+          }
+        ]
+      }
+    ],
+    max_tokens: 512,
+    temperature: 0.2
+  };
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${state.apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`API error ${response.status}: ${errText.slice(0, 120)}`);
+  }
+
+  const data = await response.json();
+  const rawContent = data?.choices?.[0]?.message?.content || '';
+
+  // Extract JSON from the response (in case model wraps it in markdown)
+  const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Could not parse AI response as JSON.');
+
+  const parsed = JSON.parse(jsonMatch[0]);
+  return {
+    menu: parsed.menu || 'Unknown food',
+    protein: Math.round(parsed.protein_g ?? 0),
+    fat: Math.round(parsed.fat_g ?? 0),
+    carb: Math.round(parsed.carb_g ?? 0),
+    kcal: Math.round(parsed.kcal ?? 0)
+  };
+}
+
+function prefillMealModalFromScan(result) {
+  const mealModal = document.getElementById('meal-modal');
+  document.getElementById('meal-modal-title').textContent = '\u2728 AI Scanned Meal';
+  document.getElementById('meal-id-input').value = '';
+  document.getElementById('meal-name-input').value = result.menu;
+  document.getElementById('meal-calories-input').value = result.kcal;
+  document.getElementById('meal-date-input').value = state.currentDate;
+  document.getElementById('save-meal-btn').textContent = 'Log Entry';
+
+  // Hidden macro fields
+  document.getElementById('meal-protein-input').value = result.protein;
+  document.getElementById('meal-fat-input').value = result.fat;
+  document.getElementById('meal-carb-input').value = result.carb;
+  document.getElementById('meal-ai-scanned').value = '1';
+
+  // Show macro preview
+  const macroPreview = document.getElementById('meal-macro-preview');
+  if (macroPreview) macroPreview.classList.remove('hidden');
+  document.getElementById('preview-protein').textContent = result.protein;
+  document.getElementById('preview-fat').textContent = result.fat;
+  document.getElementById('preview-carb').textContent = result.carb;
+
+  openModal(mealModal);
 }
 
 // BMR / TDEE MATH DISPATCHER
@@ -401,6 +662,14 @@ function openMealModalForCreate() {
   document.getElementById('meal-date-input').value = state.currentDate;
   document.getElementById('save-meal-btn').textContent = 'Log Entry';
 
+  // Clear macro hidden fields
+  document.getElementById('meal-protein-input').value = '';
+  document.getElementById('meal-fat-input').value = '';
+  document.getElementById('meal-carb-input').value = '';
+  document.getElementById('meal-ai-scanned').value = '';
+  const macroPreview = document.getElementById('meal-macro-preview');
+  if (macroPreview) macroPreview.classList.add('hidden');
+
   openModal(mealModal);
 }
 
@@ -413,6 +682,14 @@ function openMealModalForEdit(entry) {
   document.getElementById('meal-date-input').value = entry.date;
   document.getElementById('save-meal-btn').textContent = 'Update Entry';
 
+  // Clear macro fields (edit doesn't show macro preview)
+  document.getElementById('meal-protein-input').value = '';
+  document.getElementById('meal-fat-input').value = '';
+  document.getElementById('meal-carb-input').value = '';
+  document.getElementById('meal-ai-scanned').value = '';
+  const macroPreview = document.getElementById('meal-macro-preview');
+  if (macroPreview) macroPreview.classList.add('hidden');
+
   openModal(mealModal);
 }
 
@@ -421,6 +698,16 @@ function handleMealFormSubmit() {
   const name = document.getElementById('meal-name-input').value.trim();
   const calories = parseInt(document.getElementById('meal-calories-input').value, 10);
   const date = document.getElementById('meal-date-input').value;
+
+  // Read macro fields (only present for AI-scanned meals)
+  const proteinRaw = document.getElementById('meal-protein-input').value;
+  const fatRaw = document.getElementById('meal-fat-input').value;
+  const carbRaw = document.getElementById('meal-carb-input').value;
+  const aiScanned = document.getElementById('meal-ai-scanned').value === '1';
+
+  const protein = proteinRaw !== '' ? parseFloat(proteinRaw) : null;
+  const fat = fatRaw !== '' ? parseFloat(fatRaw) : null;
+  const carb = carbRaw !== '' ? parseFloat(carbRaw) : null;
 
   if (!name || isNaN(calories) || !date) {
     showToast('Please enter both a name and valid calories.', 'warning');
@@ -451,7 +738,12 @@ function handleMealFormSubmit() {
       calories,
       mealType: '',
       date,
-      time: timeString
+      time: timeString,
+      // AI scan fields
+      aiScanned: aiScanned || false,
+      protein: protein,
+      fat: fat,
+      carb: carb
     };
 
     state.entries.push(newEntry);
@@ -459,6 +751,10 @@ function handleMealFormSubmit() {
     renderAll();
     showToast(`Logged "${name}" (${calories} kcal)`, 'success');
   }
+
+  // Clean up macro preview
+  const macroPreview = document.getElementById('meal-macro-preview');
+  if (macroPreview) macroPreview.classList.add('hidden');
 
   closeModal(mealModal);
 }

@@ -22,7 +22,9 @@ export let state = {
   currentDate: getLocalDateString(),
   theme: 'dark',
   activeView: 'dashboard',
-  analyticsRange: 7
+  analyticsRange: 7,
+  apiKey: '',
+  modelName: 'gemini-3.5-flash'
 };
 
 export function saveEntries() {
@@ -39,6 +41,11 @@ export function saveTdeeGoal() {
 
 export function saveTdeeSettings() {
   localStorage.setItem('kcal_tracker_tdee_settings', JSON.stringify(state.tdeeSettings));
+}
+
+export function saveAiSettings() {
+  localStorage.setItem('kcal_ai_key', state.apiKey);
+  localStorage.setItem('kcal_ai_model', state.modelName);
 }
 
 export function loadLocalStorage(showToastCallback) {
@@ -69,6 +76,12 @@ export function loadLocalStorage(showToastCallback) {
 
     const theme = localStorage.getItem('kcal_tracker_theme');
     if (theme) state.theme = theme;
+
+    const apiKey = localStorage.getItem('kcal_ai_key');
+    if (apiKey) state.apiKey = apiKey;
+
+    const modelName = localStorage.getItem('kcal_ai_model');
+    if (modelName) state.modelName = modelName;
   } catch (err) {
     console.error('Error loading localStorage:', err);
     if (showToastCallback) {

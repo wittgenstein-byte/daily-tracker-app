@@ -249,6 +249,11 @@
       </div>
       <form id="meal-form">
         <input type="hidden" id="meal-id-input">
+        <!-- Hidden macro fields populated by LLM scan -->
+        <input type="hidden" id="meal-protein-input">
+        <input type="hidden" id="meal-fat-input">
+        <input type="hidden" id="meal-carb-input">
+        <input type="hidden" id="meal-ai-scanned">
         <div class="form-group">
           <label for="meal-name-input">Food/Meal Name</label>
           <input type="text" id="meal-name-input" placeholder="e.g. Oatmeal with Chia Seeds" required>
@@ -256,6 +261,15 @@
         <div class="form-group">
           <label for="meal-calories-input">Calories (kcal)</label>
           <input type="number" id="meal-calories-input" min="1" max="5000" placeholder="e.g. 350" required>
+        </div>
+        <!-- AI Macro Preview (shown only after scan) -->
+        <div id="meal-macro-preview" class="meal-macro-preview hidden">
+          <span class="macro-preview-label">✨ AI Estimated Macros</span>
+          <div class="macro-preview-pills">
+            <span class="macro-pill macro-pill--protein">P: <strong id="preview-protein">--</strong>g</span>
+            <span class="macro-pill macro-pill--fat">F: <strong id="preview-fat">--</strong>g</span>
+            <span class="macro-pill macro-pill--carb">C: <strong id="preview-carb">--</strong>g</span>
+          </div>
         </div>
         <div class="form-group">
           <label for="meal-date-input">Log Date</label>
@@ -378,6 +392,25 @@
             </form>
           </div>
         </div>
+        <!-- AI / LLM Settings -->
+        <div class="settings-section-divider"></div>
+        <div class="settings-ai-section">
+          <h4 class="settings-section-title">🤖 AI Food Scanner</h4>
+          <p class="input-help">Configure the LLM API for the camera food scan feature.</p>
+          <div class="app-form" style="margin-top:1rem;">
+            <div class="form-group">
+              <label for="settings-api-key">API Key</label>
+              <input type="password" id="settings-api-key" placeholder="Enter your API key" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="settings-model-name">Model Name</label>
+              <input type="text" id="settings-model-name" placeholder="e.g. gemini-3.5-flash">
+              <p class="input-help">Endpoint: https://gen.ai.kku.ac.th/api/v1</p>
+            </div>
+            <button type="button" id="save-ai-settings-btn" class="text-btn primary-btn" style="align-self:flex-start;">Save AI Settings</button>
+          </div>
+        </div>
+
         <!-- Data Backup & Restore -->
         <div class="settings-section-divider"></div>
         <div class="settings-backup-section">
@@ -403,6 +436,74 @@
       </div>
     </div>
   </div>
+
+  <!-- 4. Camera / AI Scan Modal -->
+  <div id="camera-modal" class="modal-overlay hidden" aria-modal="true" role="dialog">
+    <div class="modal-card camera-modal-card">
+      <div class="modal-header">
+        <h3 id="camera-modal-title">📷 Scan Food with AI</h3>
+        <button id="close-camera-modal" class="close-btn">&times;</button>
+      </div>
+
+      <!-- Step 1: Live Camera Preview -->
+      <div id="camera-step-preview" class="camera-step">
+        <div class="camera-viewfinder">
+          <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
+          <div class="camera-frame-guide">
+            <div class="frame-corner frame-tl"></div>
+            <div class="frame-corner frame-tr"></div>
+            <div class="frame-corner frame-bl"></div>
+            <div class="frame-corner frame-br"></div>
+          </div>
+          <p class="camera-hint">Point camera at your food 🍽️</p>
+        </div>
+        <div class="camera-controls">
+          <button id="capture-btn" class="capture-shutter-btn" aria-label="Capture photo">
+            <span class="shutter-ring"></span>
+            <span class="shutter-inner"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Confirm Preview -->
+      <div id="camera-step-confirm" class="camera-step hidden">
+        <div class="camera-viewfinder">
+          <canvas id="camera-canvas" class="camera-canvas"></canvas>
+        </div>
+        <div class="camera-confirm-actions">
+          <button id="retake-btn" class="text-btn secondary-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Retake
+          </button>
+          <button id="scan-confirm-btn" class="text-btn primary-btn scan-confirm-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 2a10 10 0 1 0 10 10"/><path d="m9 12 2 2 4-4"/></svg>
+            Analyze with AI
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: AI Loading -->
+      <div id="camera-step-loading" class="camera-step hidden">
+        <div class="ai-loading-container">
+          <div class="ai-spinner">
+            <div class="ai-spinner-ring"></div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="ai-brain-icon"><path d="M12 2a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5 5 5 0 0 1-5-5V7a5 5 0 0 1 5-5z"/><path d="M12 13v9"/><path d="M8 17H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h2"/><path d="M16 17h3a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2h-2"/></svg>
+          </div>
+          <p class="ai-loading-title">Analyzing your food…</p>
+          <p class="ai-loading-sub">Our AI nutritionist is identifying ingredients & estimating macros</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Camera FAB -->
+  <button id="scan-fab" class="scan-fab" aria-label="Scan food with AI camera" title="AI Food Scanner">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="fab-icon">
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+      <circle cx="12" cy="13" r="3"/>
+    </svg>
+    <span class="fab-label">AI Scan</span>
+  </button>
 
   <!-- JavaScript Entrypoint -->
   <script type="module" src="/app.js"></script>
