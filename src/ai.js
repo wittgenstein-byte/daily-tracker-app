@@ -1,5 +1,7 @@
 import { state } from './state.js';
 
+const PROXY_URL = '/api/analyze';
+
 async function fetchWithTimeout(resource, options = {}) {
   const { timeout = 20000 } = options;
   const controller = new AbortController();
@@ -22,7 +24,6 @@ async function fetchWithTimeout(resource, options = {}) {
 }
 
 export async function analyzeFood(base64DataUrl) {
-  const apiUrl = 'https://gen.ai.kku.ac.th/api/v1/chat/completions';
   const model = state.modelName || 'gemini-3.5-flash';
 
   // Strip the data URL prefix for the API
@@ -58,14 +59,13 @@ Example response:
     temperature: 0.1
   };
 
-  const response = await fetchWithTimeout(apiUrl, {
+  const response = await fetchWithTimeout(PROXY_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${state.apiKey}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload),
-    timeout: 20000
+    timeout: 25000
   });
 
   if (!response.ok) {
@@ -449,8 +449,6 @@ function extractAndParseJSON(text) {
 }
 
 async function repairWithLLM(rawText, model) {
-  const apiUrl = 'https://gen.ai.kku.ac.th/api/v1/chat/completions';
-
   const messages = [
     {
       role: 'system',
@@ -469,12 +467,11 @@ async function repairWithLLM(rawText, model) {
   ];
 
   const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${state.apiKey}`,
+    'Content-Type': 'application/json'
   };
 
   // Try with response_format first; fall back without it if backend rejects (400)
-  let resp = await fetchWithTimeout(apiUrl, {
+  let resp = await fetchWithTimeout(PROXY_URL, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -489,7 +486,7 @@ async function repairWithLLM(rawText, model) {
 
   if (resp.status === 400) {
     console.warn('[AI Scan] Backend rejected response_format, retrying without it');
-    resp = await fetchWithTimeout(apiUrl, {
+    resp = await fetchWithTimeout(PROXY_URL, {
       method: 'POST',
       headers,
       body: JSON.stringify({

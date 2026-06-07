@@ -23,7 +23,6 @@ export let state = {
   theme: 'dark',
   activeView: 'dashboard',
   analyticsRange: 7,
-  apiKey: '',
   modelName: 'gemini-3.5-flash'
 };
 
@@ -44,7 +43,6 @@ export function saveTdeeSettings() {
 }
 
 export function saveAiSettings() {
-  localStorage.setItem('kcal_ai_key', state.apiKey);
   localStorage.setItem('kcal_ai_model', state.modelName);
 }
 
@@ -76,9 +74,6 @@ export function loadLocalStorage(showToastCallback) {
 
     const theme = localStorage.getItem('kcal_tracker_theme');
     if (theme) state.theme = theme;
-
-    const apiKey = localStorage.getItem('kcal_ai_key');
-    if (apiKey) state.apiKey = apiKey;
 
     const modelName = localStorage.getItem('kcal_ai_model');
     if (modelName) state.modelName = modelName;

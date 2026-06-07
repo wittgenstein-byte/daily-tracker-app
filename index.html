@@ -410,18 +410,14 @@
         <div class="settings-section-divider"></div>
         <div class="settings-ai-section">
           <h4 class="settings-section-title">🤖 AI Food Scanner</h4>
-          <p class="input-help">Configure the LLM API for the camera food scan feature.</p>
+          <p class="input-help">Configure the LLM model used by the camera food scan feature. The API key is stored server-side in <code>.env</code> (<code>AI_API_KEY</code>) and never reaches the browser.</p>
           <div class="app-form" style="margin-top:1rem;">
-            <div class="form-group">
-              <label for="settings-api-key">API Key</label>
-              <input type="password" id="settings-api-key" placeholder="Enter your API key" autocomplete="off">
-            </div>
             <div class="form-group">
               <label for="settings-model-name">Model Name</label>
               <input type="text" id="settings-model-name" placeholder="e.g. gemini-3.5-flash">
-              <p class="input-help">Endpoint: https://gen.ai.kku.ac.th/api/v1</p>
+              <p class="input-help">Endpoint: https://gen.ai.kku.ac.th/api/v1 (proxied via <code>/api/analyze</code>)</p>
             </div>
-            <button type="button" id="save-ai-settings-btn" class="text-btn primary-btn" style="align-self:flex-start;">Save AI Settings</button>
+            <button type="button" id="save-ai-settings-btn" class="text-btn primary-btn" style="align-self:flex-start;">Save AI Model</button>
           </div>
         </div>
 

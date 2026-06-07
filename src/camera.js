@@ -301,11 +301,6 @@ function retakePhoto() {
 async function confirmAndScan() {
   if (!_capturedBase64) return;
 
-  if (!state.apiKey) {
-    showToast('No API key set. Go to Settings → AI Food Scanner.', 'warning');
-    return;
-  }
-
   showCameraStep('loading');
 
   try {
@@ -322,9 +317,7 @@ async function confirmAndScan() {
 }
 
 export function loadAiSettingsIntoForm() {
-  const keyInput = document.getElementById('settings-api-key');
   const modelInput = document.getElementById('settings-model-name');
-  if (keyInput) keyInput.value = state.apiKey || '';
   if (modelInput) modelInput.value = state.modelName || 'gemini-3.5-flash';
 }
 
@@ -387,12 +380,10 @@ export function setupCameraListeners() {
   const saveAiBtn = document.getElementById('save-ai-settings-btn');
   if (saveAiBtn) {
     saveAiBtn.addEventListener('click', () => {
-      const keyVal = document.getElementById('settings-api-key').value.trim();
       const modelVal = document.getElementById('settings-model-name').value.trim();
-      state.apiKey = keyVal;
       state.modelName = modelVal || 'gemini-3.5-flash';
       saveAiSettings();
-      showToast('AI settings saved!', 'success');
+      showToast('AI model saved!', 'success');
     });
   }
 }
