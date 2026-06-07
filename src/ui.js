@@ -139,15 +139,15 @@ export function renderDailyLog() {
         parseInt(f.calories, 10) === parseInt(item.calories, 10)
       );
 
-      // Build macro pills HTML for AI-scanned meals
+      // Build macro pills HTML
       let macroPillsHtml = '';
-      if (item.aiScanned && (item.protein != null || item.fat != null || item.carb != null)) {
+      if (item.protein != null || item.fat != null || item.carb != null) {
         macroPillsHtml = `
           <div class="item-macro-pills">
             <span class="macro-pill macro-pill--protein">P: <strong>${item.protein ?? '--'}g</strong></span>
             <span class="macro-pill macro-pill--fat">F: <strong>${item.fat ?? '--'}g</strong></span>
             <span class="macro-pill macro-pill--carb">C: <strong>${item.carb ?? '--'}g</strong></span>
-            <span class="macro-pill macro-pill--ai">\u2728 AI</span>
+            ${item.aiScanned ? '<span class="macro-pill macro-pill--ai">\u2728 AI</span>' : ''}
           </div>
         `;
       }

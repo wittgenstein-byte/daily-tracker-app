@@ -433,11 +433,11 @@ function openMealModalForEdit(entry) {
   document.getElementById('meal-date-input').value = entry.date;
   document.getElementById('save-meal-btn').textContent = 'Update Entry';
 
-  // Clear macro fields (edit doesn't show macro preview)
-  document.getElementById('meal-protein-input').value = '';
-  document.getElementById('meal-fat-input').value = '';
-  document.getElementById('meal-carb-input').value = '';
-  document.getElementById('meal-ai-scanned').value = '';
+  // Populate macro fields if they exist
+  document.getElementById('meal-protein-input').value = entry.protein !== undefined && entry.protein !== null ? entry.protein : '';
+  document.getElementById('meal-fat-input').value = entry.fat !== undefined && entry.fat !== null ? entry.fat : '';
+  document.getElementById('meal-carb-input').value = entry.carb !== undefined && entry.carb !== null ? entry.carb : '';
+  document.getElementById('meal-ai-scanned').value = entry.aiScanned ? '1' : '';
   const macroPreview = document.getElementById('meal-macro-preview');
   if (macroPreview) macroPreview.classList.add('hidden');
 
@@ -474,6 +474,10 @@ function handleMealFormSubmit() {
       state.entries[index].name = name;
       state.entries[index].calories = calories;
       state.entries[index].date = date;
+      state.entries[index].protein = protein;
+      state.entries[index].fat = fat;
+      state.entries[index].carb = carb;
+      state.entries[index].aiScanned = aiScanned;
       saveEntries();
       renderAll();
       showToast(`Updated entry: "${name}"`, 'success');

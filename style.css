@@ -1813,6 +1813,24 @@ input:focus, select:focus {
   padding: 0.25rem 0.6rem;
 }
 
+.macro-inputs-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.macro-input-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.macro-input-col label {
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  color: var(--text-muted) !important;
+}
+
 /* ============================================================
    SETTINGS — AI SECTION
    ============================================================ */

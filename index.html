@@ -249,10 +249,6 @@
       </div>
       <form id="meal-form">
         <input type="hidden" id="meal-id-input">
-        <!-- Hidden macro fields populated by LLM scan -->
-        <input type="hidden" id="meal-protein-input">
-        <input type="hidden" id="meal-fat-input">
-        <input type="hidden" id="meal-carb-input">
         <input type="hidden" id="meal-ai-scanned">
         <div class="form-group">
           <label for="meal-name-input">Food/Meal Name</label>
@@ -262,8 +258,26 @@
           <label for="meal-calories-input">Calories (kcal)</label>
           <input type="number" id="meal-calories-input" min="1" max="5000" placeholder="e.g. 350" required>
         </div>
-        <!-- AI Macro Preview (shown only after scan) -->
-        <div id="meal-macro-preview" class="meal-macro-preview hidden">
+        <!-- Manual/AI Macro input fields -->
+        <div class="form-group">
+          <label>Macros (g) (Optional)</label>
+          <div class="macro-inputs-row">
+            <div class="macro-input-col">
+              <label for="meal-protein-input">Protein</label>
+              <input type="number" id="meal-protein-input" min="0" max="500" placeholder="e.g. 20">
+            </div>
+            <div class="macro-input-col">
+              <label for="meal-fat-input">Fat</label>
+              <input type="number" id="meal-fat-input" min="0" max="500" placeholder="e.g. 10">
+            </div>
+            <div class="macro-input-col">
+              <label for="meal-carb-input">Carbs</label>
+              <input type="number" id="meal-carb-input" min="0" max="500" placeholder="e.g. 40">
+            </div>
+          </div>
+        </div>
+        <!-- AI Macro Preview (kept for JS compatibility but hidden since fields are now editable) -->
+        <div id="meal-macro-preview" class="meal-macro-preview hidden" style="display: none !important;">
           <span class="macro-preview-label">✨ AI Estimated Macros</span>
           <div class="macro-preview-pills">
             <span class="macro-pill macro-pill--protein">P: <strong id="preview-protein">--</strong>g</span>
