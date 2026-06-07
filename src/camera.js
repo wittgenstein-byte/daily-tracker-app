@@ -31,15 +31,19 @@ export function openCameraModal() {
   showCameraStep('preview');
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
-
-  // Immediately trigger the native camera
-  triggerNativeCamera();
 }
 
 export function closeCameraModal() {
   const modal = document.getElementById('camera-modal');
   if (modal) closeModal(modal);
   _capturedBase64 = null;
+
+  // Reset canvas to free memory
+  const canvas = document.getElementById('camera-canvas');
+  if (canvas) {
+    canvas.width = 1;
+    canvas.height = 1;
+  }
 }
 
 function showCameraStep(step) {
@@ -54,44 +58,130 @@ function showCameraStep(step) {
  * Process a captured/uploaded image file: compress to 800x600 JPEG,
  * store as base64, and show the confirm step.
  */
-function processImageFile(file) {
+async function processImageFile(file) {
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.getElementById('camera-canvas');
-      if (!canvas) return;
+  // 1) Guard: Reject files larger than 8MB to prevent OOM on mobile
+  const MAX_FILE_BYTES = 8 * 1024 * 1024;
+  if (file.size > MAX_FILE_BYTES) {
+    showToast('Image too large (max 8MB). Please upload a smaller photo.', 'warning');
+    return;
+  }
 
-      const MAX_W = 800;
-      const MAX_H = 600;
-      let w = img.width;
-      let h = img.height;
+  const isHeic = file.name?.toLowerCase().endsWith('.heic') || file.name?.toLowerCase().endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+  
+  let targetFile = file;
+  if (isHeic) {
+    showToast('Processing HEIC image...', 'info');
+    try {
+      // 2) Try native decode first (supported in modern iOS and Android) - no library load, very low RAM usage
+      const bitmap = await createImageBitmap(file);
+      
+      const tempCanvas = document.createElement('canvas');
+      const MAX_W = 600;
+      const MAX_H = 450;
+      let w = bitmap.width;
+      let h = bitmap.height;
       const ratio = Math.min(MAX_W / w, MAX_H / h, 1);
-      canvas.width = Math.round(w * ratio);
-      canvas.height = Math.round(h * ratio);
-
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      _capturedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-
-      // Show the modal (in case it was hidden) and go to confirm step
-      const modal = document.getElementById('camera-modal');
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.setAttribute('aria-hidden', 'false');
+      tempCanvas.width = Math.round(w * ratio);
+      tempCanvas.height = Math.round(h * ratio);
+      
+      const ctx = tempCanvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0, tempCanvas.width, tempCanvas.height);
+      
+      // Close bitmap immediately to release memory
+      bitmap.close();
+      
+      const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/jpeg', 0.75));
+      
+      // Reset temp canvas size
+      tempCanvas.width = 1;
+      tempCanvas.height = 1;
+      
+      targetFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+        type: 'image/jpeg'
+      });
+      console.log('[HEIC] Native decode successful');
+    } catch (nativeErr) {
+      console.warn('[HEIC] Native decode failed, trying heic2any fallback:', nativeErr);
+      try {
+        const heic2any = (await import('heic2any')).default;
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.75
+        });
+        const resultBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+        targetFile = new File([resultBlob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+          type: 'image/jpeg'
+        });
+      } catch (err) {
+        console.error('[HEIC] Fallback conversion failed:', err);
+        showToast('HEIC conversion failed. In Camera settings, please change format to JPEG.', 'warning');
+        return;
       }
-      showCameraStep('confirm');
-    };
-    img.src = event.target.result;
+    }
+  }
+
+  const objectUrl = URL.createObjectURL(targetFile);
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.getElementById('camera-canvas');
+    if (!canvas) {
+      URL.revokeObjectURL(objectUrl);
+      return;
+    }
+
+    const MAX_W = 600;
+    const MAX_H = 450;
+    let w = img.width;
+    let h = img.height;
+    const ratio = Math.min(MAX_W / w, MAX_H / h, 1);
+    canvas.width = Math.round(w * ratio);
+    canvas.height = Math.round(h * ratio);
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    URL.revokeObjectURL(objectUrl);
+
+    // Release image reference so GC can reclaim it
+    img.src = '';
+    img.onload = null;
+    img.onerror = null;
+
+    _capturedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+
+    // Show the modal (in case it was hidden) and go to confirm step
+    const modal = document.getElementById('camera-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+    showCameraStep('confirm');
   };
-  reader.readAsDataURL(file);
+  img.onerror = function() {
+    URL.revokeObjectURL(objectUrl);
+    img.src = '';
+    img.onload = null;
+    img.onerror = null;
+    showToast('Could not load image. Please try another photo.', 'warning');
+    showCameraStep('preview');
+  };
+  img.src = objectUrl;
 }
 
 function retakePhoto() {
   _capturedBase64 = null;
   showCameraStep('preview');
+
+  // Reset canvas to free memory
+  const canvas = document.getElementById('camera-canvas');
+  if (canvas) {
+    canvas.width = 1;
+    canvas.height = 1;
+  }
+
   // Re-trigger the native camera
   triggerNativeCamera();
 }
@@ -108,15 +198,6 @@ async function confirmAndScan() {
 
   try {
     const result = await analyzeFood(_capturedBase64);
-
-    // Save image to localStorage keyed by menu + today's date
-    const slug = slugify(result.menu || 'food');
-    const dateKey = state.currentDate;
-    try {
-      localStorage.setItem(`scan_${slug}_${dateKey}`, _capturedBase64);
-    } catch (storageErr) {
-      console.warn('Could not save image to localStorage (quota?):', storageErr);
-    }
 
     // Close camera modal, open meal modal pre-filled
     closeCameraModal();
@@ -658,23 +739,21 @@ export function setupCameraListeners() {
 
   if (closeCameraBtn) closeCameraBtn.addEventListener('click', () => closeCameraModal());
 
-  // Shutter button triggers native camera (capture="environment")
-  if (captureBtn && cameraCaptureInput) {
-    captureBtn.addEventListener('click', () => triggerNativeCamera());
-    cameraCaptureInput.addEventListener('change', (e) => {
+  // Shutter button (capture="environment") change listener
+  if (cameraCaptureInput) {
+    cameraCaptureInput.addEventListener('change', async (e) => {
       if (e.target.files?.[0]) {
-        processImageFile(e.target.files[0]);
+        await processImageFile(e.target.files[0]);
         e.target.value = '';
       }
     });
   }
 
-  // Upload button opens gallery (no capture attribute)
-  if (uploadImgBtn && cameraFileInput) {
-    uploadImgBtn.addEventListener('click', () => cameraFileInput.click());
-    cameraFileInput.addEventListener('change', (e) => {
+  // Gallery upload change listener
+  if (cameraFileInput) {
+    cameraFileInput.addEventListener('change', async (e) => {
       if (e.target.files?.[0]) {
-        processImageFile(e.target.files[0]);
+        await processImageFile(e.target.files[0]);
         e.target.value = '';
       }
     });

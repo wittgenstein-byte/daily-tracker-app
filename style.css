@@ -1637,6 +1637,7 @@ input:focus, select:focus {
   border-radius: 50%;
   border: 3px solid var(--text-primary);
   opacity: 0.85;
+  pointer-events: none;
 }
 
 .shutter-inner {
@@ -1645,6 +1646,11 @@ input:focus, select:focus {
   border-radius: 50%;
   background: var(--text-primary);
   transition: background 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+
+.upload-img-btn svg {
+  pointer-events: none;
 }
 
 .capture-shutter-btn:hover .shutter-inner {
