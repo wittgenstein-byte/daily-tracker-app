@@ -130,25 +130,9 @@
             </div>
           </div>
 
-          <!-- Favorites Panel -->
-          <div class="dashboard-card favorites-card">
-            <div class="favorites-header">
-              <h2 class="card-title">Favorite Meals</h2>
-              <button id="add-favorite-btn" class="icon-btn text-accent" aria-label="Add Favorite Meal" title="Add Favorite">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="heart-icon-plus"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-              </button>
-            </div>
-            <div class="favorites-search-bar">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="text" id="fav-search" placeholder="Search favorites...">
-            </div>
-            <ul id="favorites-list" class="favorites-list">
-              <!-- Dynamic Content -->
-            </ul>
-          </div>
         </section>
 
-        <!-- COLUMN 2: DAILY MEAL LOG -->
+        <!-- COLUMN 2: DAILY MEAL LOG & FAVORITES -->
         <section class="panel-right">
           <!-- Daily Log Card -->
           <div class="dashboard-card meal-log-card">
@@ -176,6 +160,23 @@
                 </ul>
               </div>
             </div>
+          </div>
+
+          <!-- Favorites Panel -->
+          <div class="dashboard-card favorites-card">
+            <div class="favorites-header">
+              <h2 class="card-title">Favorite Meals</h2>
+              <button id="add-favorite-btn" class="icon-btn text-accent" aria-label="Add Favorite Meal" title="Add Favorite">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="heart-icon-plus"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+              </button>
+            </div>
+            <div class="favorites-search-bar">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="fav-search" placeholder="Search favorites...">
+            </div>
+            <ul id="favorites-list" class="favorites-list">
+              <!-- Dynamic Content -->
+            </ul>
           </div>
         </section>
       </div>
@@ -326,7 +327,7 @@
   <div id="settings-modal" class="modal-overlay hidden" aria-modal="true" role="dialog">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Settings & TDEE Planner</h3>
+        <h3>TDEE & Calorie Goal Planner</h3>
         <button id="close-settings-modal" class="close-btn">&times;</button>
       </div>
       <div class="modal-body-content">
@@ -404,40 +405,6 @@
                 <button type="submit" class="text-btn primary-btn w-full">Calculate & Save Goal</button>
               </div>
             </form>
-          </div>
-        </div>
-        <!-- AI / LLM Settings -->
-        <div class="settings-section-divider"></div>
-        <div class="settings-ai-section">
-          <h4 class="settings-section-title">🤖 AI Food Scanner</h4>
-          <p class="input-help">Configure the LLM model used by the camera food scan feature. The API key is stored server-side in <code>.env</code> (<code>AI_API_KEY</code>) and never reaches the browser.</p>
-          <div class="app-form" style="margin-top:1rem;">
-            <div class="form-group">
-              <label for="settings-model-name">Model Name</label>
-              <input type="text" id="settings-model-name" placeholder="e.g. gemini-3.5-flash">
-              <p class="input-help">Endpoint: https://gen.ai.kku.ac.th/api/v1 (proxied via <code>/api/analyze</code>)</p>
-            </div>
-            <button type="button" id="save-ai-settings-btn" class="text-btn primary-btn" style="align-self:flex-start;">Save AI Model</button>
-          </div>
-        </div>
-
-        <!-- Data Backup & Restore -->
-        <div class="settings-section-divider"></div>
-        <div class="settings-backup-section">
-          <h4 class="settings-section-title">Data Backup & Restore</h4>
-          <p class="input-help">Export your calorie entries and favorites to a JSON backup file, or restore them from a previous backup.</p>
-          <div class="backup-actions">
-            <button id="export-btn" class="text-btn secondary-btn w-full">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-              <span>Export Backup (JSON)</span>
-            </button>
-            <div class="import-wrapper w-full">
-              <input type="file" id="import-file-input" accept=".json" class="hidden">
-              <button id="import-btn" class="text-btn secondary-btn w-full">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>Import Backup (JSON)</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
