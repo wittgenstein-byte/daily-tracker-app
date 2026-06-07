@@ -4,6 +4,27 @@ import { showToast, openModal, closeModal, prefillMealModalFromScan } from './ui
 let _capturedBase64 = null;
 let _stream = null;
 
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 20000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    if (error.name === 'AbortError') {
+      throw new Error('Connection timed out. Please check your connection and try again.');
+    }
+    throw error;
+  }
+}
+
 function slugify(str) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
@@ -316,13 +337,14 @@ Example response:
     temperature: 0.1
   };
 
-  const response = await fetch(apiUrl, {
+  const response = await fetchWithTimeout(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${state.apiKey}`
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    timeout: 20000
   });
 
   if (!response.ok) {
@@ -750,7 +772,7 @@ async function repairWithLLM(rawText, model) {
   };
 
   // Try with response_format first; fall back without it if backend rejects (400)
-  let resp = await fetch(apiUrl, {
+  let resp = await fetchWithTimeout(apiUrl, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -760,11 +782,12 @@ async function repairWithLLM(rawText, model) {
       max_tokens: 2048,
       temperature: 0,
     }),
+    timeout: 15000
   });
 
   if (resp.status === 400) {
     console.warn('[AI Scan] Backend rejected response_format, retrying without it');
-    resp = await fetch(apiUrl, {
+    resp = await fetchWithTimeout(apiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -773,6 +796,7 @@ async function repairWithLLM(rawText, model) {
         max_tokens: 2048,
         temperature: 0,
       }),
+      timeout: 15000
     });
   }
 
