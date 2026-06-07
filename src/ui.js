@@ -315,6 +315,32 @@ export function renderAnalyticsView() {
   document.getElementById('stat-compliance').textContent = `${compliancePercent}%`;
   document.getElementById('stat-max-kcal').textContent = maxKcal.toLocaleString();
   document.getElementById('stat-min-kcal').textContent = minKcal.toLocaleString();
-  
+
   renderCalorieChart("#analytics-chart", labels, values, state.tdeeGoal, state.theme);
 }
+
+export function prefillMealModalFromScan(result) {
+  const mealModal = document.getElementById('meal-modal');
+  document.getElementById('meal-modal-title').textContent = '\u2728 AI Scanned Meal';
+  document.getElementById('meal-id-input').value = '';
+  document.getElementById('meal-name-input').value = result.menu;
+  document.getElementById('meal-calories-input').value = result.kcal;
+  document.getElementById('meal-date-input').value = state.currentDate;
+  document.getElementById('save-meal-btn').textContent = 'Log Entry';
+
+  // Hidden macro fields
+  document.getElementById('meal-protein-input').value = result.protein;
+  document.getElementById('meal-fat-input').value = result.fat;
+  document.getElementById('meal-carb-input').value = result.carb;
+  document.getElementById('meal-ai-scanned').value = '1';
+
+  // Show macro preview
+  const macroPreview = document.getElementById('meal-macro-preview');
+  if (macroPreview) macroPreview.classList.remove('hidden');
+  document.getElementById('preview-protein').textContent = result.protein;
+  document.getElementById('preview-fat').textContent = result.fat;
+  document.getElementById('preview-carb').textContent = result.carb;
+
+  openModal(mealModal);
+}
+
