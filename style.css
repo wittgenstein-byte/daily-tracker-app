@@ -814,9 +814,12 @@ input:focus, select:focus {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: normal;
 }
 
 .item-time {
@@ -1000,9 +1003,12 @@ input:focus, select:focus {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: normal;
 }
 
 .fav-meta {
@@ -1229,6 +1235,27 @@ input:focus, select:focus {
   }
 }
 
+@media (max-width: 400px) {
+  .date-navigator {
+    gap: 0.25rem;
+    padding: 0.25rem 0.4rem;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .date-label {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.5rem;
+  }
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+  #today-btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+}
+
 /* SETTINGS BUTTON MICRO-ANIMATION */
 .settings-icon {
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1405,6 +1432,20 @@ input:focus, select:focus {
   .backup-actions {
     flex-direction: column;
     gap: 0.75rem;
+  }
+  .meal-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .item-info {
+    padding-right: 0;
+  }
+  .item-kcal-actions {
+    justify-content: space-between;
+    border-top: 1px dashed var(--border-muted);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
   }
 }
 

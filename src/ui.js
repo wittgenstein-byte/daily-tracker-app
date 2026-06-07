@@ -156,7 +156,7 @@ export function renderDailyLog() {
       li.className = 'meal-item';
       li.innerHTML = `
         <div class="item-info">
-          <span class="item-name">${escapeHtml(item.name)}</span>
+          <span class="item-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
           <span class="item-time">${escapeHtml(item.time || 'Logged')}</span>
           ${macroPillsHtml}
         </div>
