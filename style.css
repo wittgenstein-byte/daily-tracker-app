@@ -1958,11 +1958,11 @@ input:focus, select:focus {
 
 /* Immersive Mobile Full-screen Camera UI */
 @media (max-width: 576px) {
-  #camera-modal {
+  #camera-modal.camera-modal--fullscreen {
     padding: 0 !important;
   }
   
-  #camera-modal .camera-modal-card {
+  #camera-modal.camera-modal--fullscreen .camera-modal-card {
     max-width: 100% !important;
     width: 100% !important;
     height: 100% !important;
@@ -1978,7 +1978,7 @@ input:focus, select:focus {
   }
 
   /* Transparent header overlay at the top */
-  #camera-modal .modal-header {
+  #camera-modal.camera-modal--fullscreen .modal-header {
     position: absolute;
     top: 0;
     left: 0;
@@ -1990,14 +1990,14 @@ input:focus, select:focus {
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 30%, rgba(0, 0, 0, 0));
   }
   
-  #camera-modal #camera-modal-title {
+  #camera-modal.camera-modal--fullscreen #camera-modal-title {
     color: #fff !important;
     font-size: 1.15rem !important;
     font-weight: 600 !important;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   }
   
-  #camera-modal .close-btn {
+  #camera-modal.camera-modal--fullscreen .close-btn {
     color: #fff !important;
     background: rgba(255, 255, 255, 0.2) !important;
     width: 36px;
@@ -2015,20 +2015,19 @@ input:focus, select:focus {
   }
 
   /* Make steps fill the entire modal screen */
-  #camera-modal .camera-step {
+  #camera-modal.camera-modal--fullscreen .camera-step {
     width: 100% !important;
     height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
   }
 
-  #camera-modal .camera-step.hidden {
+  #camera-modal.camera-modal--fullscreen .camera-step.hidden {
     display: none !important;
   }
 
   /* Viewfinders take up full viewport height */
-  #camera-modal .camera-viewfinder,
-  #camera-modal .camera-confirm-viewfinder {
+  #camera-modal.camera-modal--fullscreen .camera-viewfinder {
     flex: 1 !important;
     width: 100% !important;
     height: 100% !important;
@@ -2037,23 +2036,21 @@ input:focus, select:focus {
     aspect-ratio: auto !important;
   }
 
-  #camera-modal .camera-video,
-  #camera-modal .camera-canvas {
+  #camera-modal.camera-modal--fullscreen .camera-video {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
   }
 
   /* Re-scale framing guide box to viewport width for mobile portrait */
-  .camera-guide-box {
+  #camera-modal.camera-modal--fullscreen .camera-guide-box {
     width: 80% !important;
     height: auto !important;
     aspect-ratio: 1 / 1 !important;
   }
 
   /* Controls and action buttons overlay at the bottom */
-  #camera-modal .camera-controls,
-  #camera-modal .camera-confirm-actions {
+  #camera-modal.camera-modal--fullscreen .camera-controls {
     position: absolute;
     bottom: 0;
     left: 0;

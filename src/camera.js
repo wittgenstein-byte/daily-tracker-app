@@ -134,6 +134,15 @@ function showCameraStep(step) {
     const el = document.getElementById(`camera-step-${s}`);
     if (el) el.classList.toggle('hidden', s !== step);
   });
+
+  const modal = document.getElementById('camera-modal');
+  if (modal) {
+    if (step === 'preview') {
+      modal.classList.add('camera-modal--fullscreen');
+    } else {
+      modal.classList.remove('camera-modal--fullscreen');
+    }
+  }
 }
 
 /**
